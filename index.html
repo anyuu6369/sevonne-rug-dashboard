@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>羊毛地毯竞品监控看板 · Wool Area Rug</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --panel2:#f0f2f5; --border:#e3e6ea;
+  --text:#1f2933; --muted:#5f6b76; --faint:#8b94a0;
+  --blue:#1f3a5f; --blue2:#3d6a9e; --amber:#d97706; --red:#dc2626; --green:#16a34a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:0;line-height:1.6}
+.wrap{max-width:1240px;margin:0 auto;padding:24px 20px 40px}
+header{padding-bottom:16px;margin-bottom:18px;border-bottom:1px solid var(--border)}
+h1{font-size:21px;font-weight:600;color:var(--text)}
+.sub{color:var(--muted);font-size:12.5px;margin-top:5px}
+.tabs{display:flex;gap:8px;margin:18px 0;flex-wrap:wrap}
+.tab{padding:8px 16px;border-radius:8px;border:1px solid var(--border);cursor:pointer;font-size:13px;color:var(--muted);background:var(--panel)}
+.tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.panel{display:none}
+.panel.active{display:block}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(31,41,51,.04)}
+.kpi .l{font-size:12px;color:var(--muted)}
+.kpi .v{font-size:24px;font-weight:600;margin-top:5px;color:var(--text)}
+.kpi .n{font-size:11px;color:var(--faint);margin-top:3px}
+.kpi.me{border-color:var(--amber)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(31,41,51,.04)}
+.card h2{font-size:14px;font-weight:600;margin-bottom:4px;color:var(--text)}
+.card .d{font-size:12px;color:var(--muted);margin-bottom:10px}
+.chart{width:100%;height:320px}
+.chart.tall{height:400px}
+.full{grid-column:1/-1}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)}
+th{color:var(--muted);font-weight:500;background:var(--panel2)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.brand-row td{background:var(--panel2);font-weight:600;cursor:pointer}
+.brand-row td:first-child::before{content:'▸ ';color:var(--amber)}
+.brand-row.open td:first-child::before{content:'▾ '}
+tr.child{display:none}
+tr.child.show{display:table-row}
+.child td{padding-left:22px;font-size:12px}
+.thumb{width:40px;height:40px;border-radius:4px;object-fit:cover;background:var(--panel2);display:block}
+.up{color:var(--green)} .down{color:var(--red)}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:4px;margin-left:6px}
+.tag.w{background:#fdf3e3;color:var(--amber)}
+.alert{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:8px;padding:12px 14px;margin-bottom:10px}
+.alert.red{border-left-color:var(--red)}
+.alert.green{border-left-color:var(--green)}
+.alert .t{font-size:13px;font-weight:600;color:var(--text)}
+.alert .d{font-size:12.5px;color:var(--muted);margin-top:3px}
+.plist{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:6px 0}
+.plist .p{display:flex;gap:10px;padding:9px 14px;border-bottom:1px dashed var(--border);font-size:12.5px}
+.plist .p:last-child{border-bottom:none}
+.plist .p .idx{color:var(--amber);font-weight:600;min-width:18px}
+.adv{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 1px 2px rgba(31,41,51,.04)}
+.adv h2{font-size:14px;margin-bottom:10px;color:var(--text)}
+.adv ol{padding-left:20px;font-size:13px}
+.adv li{margin-bottom:8px}
+.dtc{background:var(--panel);border:1px dashed var(--border);border-radius:12px;padding:40px;text-align:center;color:var(--muted);font-size:13px}
+.foot{color:var(--faint);font-size:11.5px;margin-top:20px;text-align:center}
+.me{color:var(--amber)}
+details summary{cursor:pointer;font-size:12.5px;color:var(--blue2);font-weight:500}
+/* 词类切换 tabs */
+.wtabs{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 12px}
+.wtab{padding:6px 13px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-size:12.5px;color:var(--muted);background:var(--panel2);transition:all .15s}
+.wtab:hover{border-color:var(--blue2);color:var(--blue2)}
+.wtab.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.wtab.on.amber{background:var(--amber);border-color:var(--amber)}
+.wdesc{font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.6}
+.wdesc b{color:var(--text)}
+.brand-tag{display:inline-block;font-size:10.5px;padding:1px 6px;border-radius:4px;margin-left:5px;vertical-align:middle}
+.brand-tag.me{background:#fdf3e3;color:var(--amber)}
+.mini-table{font-size:11.5px}
+.mini-table th,.mini-table td{padding:5px 8px}
+/* DTC 板块 */
+.dtc-brand{margin-bottom:14px}
+.dtc-brand .bh{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--text);margin-bottom:5px}
+.dtc-brand .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.dtc-sum{font-size:12.5px;color:var(--muted);line-height:1.7;margin-bottom:10px;padding:9px 12px;background:var(--panel2);border-radius:8px}
+.dtc-sum b{color:var(--text)}
+.dtc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.dtc-shot{border:1px solid var(--border);border-radius:8px;overflow:hidden;cursor:zoom-in;background:#fff;transition:transform .15s,box-shadow .15s}
+.dtc-shot:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(31,41,51,.12)}
+.dtc-shot img{width:100%;height:150px;object-fit:cover;object-position:top center;display:block;background:#f0f2f5}
+.dtc-shot .cap{padding:6px 9px;font-size:11.5px;color:var(--muted);border-top:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lightbox{display:none;position:fixed;z-index:9999;inset:0;background:rgba(24,32,42,.94);align-items:center;justify-content:center;flex-direction:column;padding:20px}
+.lightbox img{max-width:94vw;max-height:82vh;object-fit:contain;border-radius:6px;background:#fff}
+.lb-cap{color:#fff;font-size:13px;margin-top:12px;text-align:center}
+.lb-close{position:absolute;top:14px;right:24px;color:#fff;font-size:30px;cursor:pointer;line-height:1}
+.lb-hint{color:#b8c4d0;font-size:11.5px;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>羊毛地毯竞品监控看板 <span class="me">· Wool Area Rug</span></h1>
+  <div class="sub">本品牌 SEVONNE 对比 Top10 竞品 · 美国站 US · 本周期 Week 47（11/16~11/22）</div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="sw(0)">① 周度概况（Week 47）</div>
+  <div class="tab" onclick="sw(1)">② 销量统计</div>
+  <div class="tab" onclick="sw(2)">③ 广告 & ABA 关键词</div>
+  <div class="tab" onclick="sw(3)">④ DTC 官网动态</div>
+  <div class="tab" onclick="sw(4)">⑤ 启示与优化</div>
+</div>
+
+<!-- 板块1 -->
+<div class="panel active" id="p0">
+  <div class="kpis">
+    <div class="kpi me"><div class="l">SEVONNE 周销量（Week 47 · 手动录入）</div><div class="v">0<span style="font-size:13px;color:var(--muted)"> 件</span></div><div class="n">花卉 0 · 素色 0 · 波斯 0</div></div>
+    <div class="kpi"><div class="l">Top 竞品羊毛销量合计（11月快照）</div><div class="v">8,441<span style="font-size:13px;color:var(--muted)"> 件</span></div><div class="n">SAFAVIEH 6,901 占 82%</div></div>
+    <div class="kpi"><div class="l">定价对比</div><div class="v" style="font-size:17px;line-height:1.5;margin-top:9px">SEVONNE <span class="me">$99~646</span><br>类目主力 <span style="color:var(--blue)">$150~500</span></div><div class="n">8x10 主力 $150~350</div></div>
+    <div class="kpi"><div class="l">「wool rug」搜索量</div><div class="v">4.85<span style="font-size:13px;color:var(--muted)"> 万/月</span></div><div class="n up">排名 +1747 · 购买率 2.86%</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>各品牌羊毛款销量对比 · 10月（准确口径）</h2>
+      <div class="d">卖家精灵 10月归档（手动会话取数）· SAFAVIEH 3,841 / Scandilivin 792 / Rugs USA 616 / RUGWYN 197 / ANSSO 212 为准确值 · Loloi / AH ALLEN / Dash & Albert 归档缺失，浅蓝柱为11月预测占位</div>
+      <div id="b1" class="chart tall"></div>
+    </div>
+    <div class="card">
+      <h2>11月销量预测（按近30天速度外推）</h2>
+      <div class="d">BFCM 加成未计入 · 月末以实际归档替换为本月准确值</div>
+      <div id="b1b" class="chart tall"></div>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1.3fr 1fr">
+    <div class="card">
+      <h2>BFCM Deal 监控 · 按品牌概况（Week 47 前台截图录入）</h2>
+      <div class="d">卖家精灵/Keepa 抓不到 Deal，数据来自前台实拍，每周人工更新</div>
+      <table>
+        <tr><th>品牌</th><th class="num">参加链接数</th><th class="num">最小折扣</th><th class="num">最大折扣</th><th>备注</th></tr>
+        <tr><td>SAFAVIEH</td><td class="num">9</td><td class="num down">-7%</td><td class="num down">-30%</td><td>主力羊毛系列全线参战，至 11/25~12/1</td></tr>
+        <tr><td>Scandilivin Homes</td><td class="num">1</td><td class="num down">-24%</td><td class="num down">-24%</td><td>100% Wool Popcorn（wool rug 点击 TOP1）</td></tr>
+        <tr><td>ANSSO</td><td class="num">1</td><td class="num down">-21%</td><td class="num down">-21%</td><td>80% Merino Wool 8x10（$284.99/list $359.99）</td></tr>
+        <tr><td>Loloi / Rugs USA</td><td class="num">0</td><td class="num">—</td><td class="num">—</td><td>前台 wool 搜索页未见（待核全店）</td></tr>
+        <tr><td>nuLOOM / TTC</td><td class="num">待复核</td><td class="num">—</td><td class="num">—</td><td>按父体复核中</td></tr>
+        <tr><td>RUGWYN / AH ALLEN / Dash & Albert</td><td class="num">0</td><td class="num">—</td><td class="num">—</td><td>高价手工段未见</td></tr>
+        <tr style="background:#fdf3e3"><td><b>SEVONNE（本品牌）</b></td><td class="num"><b>0</b></td><td class="num">—</td><td class="num">—</td><td><b class="down">未参加 BFCM</b></td></tr>
+      </table>
+      <details style="margin-top:12px">
+        <summary>▾ 展开明细（11 条 Deal）</summary>
+        <table style="margin-top:8px">
+          <tr><th>品牌</th><th>产品</th><th class="num">折扣</th><th class="num">Deal价</th><th class="num">原价</th><th>截止</th></tr>
+          <tr><td>SAFAVIEH</td><td>Chelsea Wool 9'x12'</td><td class="num down">-15%</td><td class="num">$283</td><td class="num">$332</td><td>11/25</td></tr>
+          <tr><td>SAFAVIEH</td><td>Dip Dye Wool 8x10</td><td class="num down">-19%</td><td class="num">$248</td><td class="num">$307</td><td>11/25</td></tr>
+          <tr><td>SAFAVIEH</td><td>Wool Round Rug</td><td class="num down">-7%</td><td class="num">$284</td><td class="num">—</td><td>11/27</td></tr>
+          <tr><td>SAFAVIEH</td><td>Heritage Wool 8x10 Red</td><td class="num down">-17%</td><td class="num">$169</td><td class="num">—</td><td>11/27</td></tr>
+          <tr><td>SAFAVIEH</td><td>Dip Dye Wool 6x7</td><td class="num down">-27%</td><td class="num">$158</td><td class="num">—</td><td>11/25</td></tr>
+          <tr><td>SAFAVIEH</td><td>Vintage Medallion A</td><td class="num down">-30%</td><td class="num">$249</td><td class="num">—</td><td>12/1</td></tr>
+          <tr><td>SAFAVIEH</td><td>Vintage B</td><td class="num down">-17%</td><td class="num">$328</td><td class="num">—</td><td>11/25</td></tr>
+          <tr><td>SAFAVIEH</td><td>Vintage Medallion C</td><td class="num down">-26%</td><td class="num">$326</td><td class="num">—</td><td>11/27</td></tr>
+          <tr><td>SAFAVIEH</td><td>Natural Fiber Wool</td><td class="num down">-19%</td><td class="num">$139</td><td class="num">—</td><td>11/30</td></tr>
+          <tr><td>Scandilivin</td><td>100% Wool Popcorn 8x10</td><td class="num down">-24%</td><td class="num">—</td><td class="num">—</td><td>—</td></tr>
+          <tr><td>ANSSO</td><td>80% Merino Wool Tufted 8x10</td><td class="num down">-21%</td><td class="num">$284.99</td><td class="num">$359.99</td><td>—</td></tr>
+        </table>
+      </details>
+    </div>
+    <div class="card">
+      <h2>BFCM 关键结论</h2>
+      <div class="plist" style="margin-top:6px">
+        <div class="p"><span class="idx">1</span><span><b>SEVONNE 未参加 BFCM</b>：wool rug 流量高峰期（剩约 10 天）零 Deal 零广告</span></div>
+        <div class="p"><span class="idx">2</span><span><b>Keepa 佐证「先涨后折」</b>：竞品 BFCM 前先提价（Popcorn $314→340、Metro $325→470）再打 -15%~-30%，到手价未必低于 10月；仅 ANSSO 真降价（$360→300）</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 板块2 销量统计 -->
+<div class="panel" id="p1">
+  <div class="grid">
+    <div class="card">
+      <h2>品牌羊毛销量占比（11月快照）</h2>
+      <div id="b2a" class="chart" style="height:280px"></div>
+    </div>
+    <div class="card">
+      <h2>在售羊毛款价格带分布</h2>
+      <div id="b2b" class="chart" style="height:280px"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <h2>销量统计结论</h2>
+    <div class="plist">
+      <div class="p"><span class="idx">1</span><span><b>SAFAVIEH 垄断 82%</b>：真羊毛细分销量高度集中，其余品牌合计不足 1,600 件/月；避开其主力系列正面竞争，找空档切入</span></div>
+      <div class="p"><span class="idx">2</span><span><b>$150~350 是 8x10 绞肉机价位</b>：SAFAVIEH Natura/Abstract/Capri、Loloi Polly、Scandilivin Popcorn、Rugs USA 全部堆在这一段；$99~150 与 $500+ 相对空旷</span></div>
+      <div class="p"><span class="idx">3</span><span><b>Sevonne 在售段（$540~646）竞品稀疏</b>：仅 Heritage $594 / Metro $470 / RUGWYN Oushak $1,249，但该段需要手工感与品牌力支撑；小尺寸 $99 到货后可先卡 $99~150 空档起量</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Top10 品牌 × 主要父 ASIN 销量统计</h2>
+    <div class="d">点击品牌行展开/收起 · 图为主销子体主图 · 10月归档已从卖家精灵补齐（Loloi / AH ALLEN / Dash & Albert 缺档，以11月预测占位）</div>
+    <table id="tbl"></table>
+  </div>
+</div>
+
+<!-- 板块3 广告&ABA -->
+<div class="panel" id="p2">
+  <!-- 模块1 羊毛大模块 -->
+  <div class="card" style="margin-bottom:14px">
+    <h2>模块 1｜羊毛词库 <span class="tag w">93 词</span></h2>
+    <div class="d">点击词类切换下方图表与明细 · 明细关键词可点击跳转亚马逊搜索</div>
+    <div class="wtabs" id="woolTabs">
+      <div class="wtab on amber" data-k="material" onclick="swWool('material')">材质词 <span style="opacity:.7">17</span></div>
+      <div class="wtab" data-k="size" onclick="swWool('size')">尺寸词 <span style="opacity:.7">49</span></div>
+      <div class="wtab" data-k="scene" onclick="swWool('scene')">场景词 <span style="opacity:.7">8</span></div>
+      <div class="wtab" data-k="color" onclick="swWool('color')">颜色词 <span style="opacity:.7">11</span></div>
+      <div class="wtab" data-k="brand" onclick="swWool('brand')">品牌词 <span style="opacity:.7">8</span></div>
+    </div>
+    <div class="wdesc" id="woolDesc"></div>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px;margin-bottom:0">
+      <div><div id="b3" class="chart" style="height:360px"></div></div>
+      <div style="overflow:auto;max-height:360px">
+        <table class="mini-table" id="woolTable"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模块2 类目词大模块 -->
+  <div class="card" style="margin-bottom:14px">
+    <h2>模块 2｜类目词库 <span class="tag w">93 词</span></h2>
+    <div class="d">从 1,529 条类目 ABA 中按搜索量排名取前 93 条有效地毯词 · 点击词类切换</div>
+    <div class="wtabs" id="catTabs">
+      <div class="wtab on" data-k="core" onclick="swCat('core')">类目大词 <span style="opacity:.7">23</span></div>
+      <div class="wtab" data-k="size" onclick="swCat('size')">尺寸词 <span style="opacity:.7">32</span></div>
+      <div class="wtab" data-k="scene" onclick="swCat('scene')">场景词 <span style="opacity:.7">22</span></div>
+      <div class="wtab" data-k="brand" onclick="swCat('brand')">品牌词 <span style="opacity:.7">3</span></div>
+      <div class="wtab" data-k="color" onclick="swCat('color')">颜色词 <span style="opacity:.7">13</span></div>
+    </div>
+    <div class="wdesc" id="catDesc"></div>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px;margin-bottom:0">
+      <div><div id="b3c" class="chart" style="height:360px"></div></div>
+      <div style="overflow:auto;max-height:360px">
+        <table class="mini-table" id="catTable"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模块3 各品牌流量占比 -->
+  <div class="card" style="margin-bottom:14px">
+    <h2>模块 3｜各品牌流量占比（自然 vs 广告）</h2>
+    <div class="d">西柚父体近 7 天 · 统计周期 2026/11/12–11/18 · 单一代表父体（见括注），非全店</div>
+    <div id="b3flow" class="chart" style="height:300px"></div>
+    <table class="mini-table" style="margin-top:8px">
+      <tr><th>品牌（代表父体）</th><th class="num">自然流量</th><th class="num">自然占比</th><th class="num">广告流量</th><th class="num">广告占比</th><th>结论</th></tr>
+      <tr><td>SAFAVIEH <span style="color:var(--faint)">B0BWLCB9V9</span></td><td class="num">56,811</td><td class="num">98.8%</td><td class="num">670</td><td class="num">1.2%</td><td>品牌自然流量护城河极深</td></tr>
+      <tr><td>Scandilivin <span style="color:var(--faint)">B0DHPLB82Q</span></td><td class="num">125,254</td><td class="num">97.6%</td><td class="num">3,101</td><td class="num">2.4%</td><td>羊毛爆款自然流量最大</td></tr>
+      <tr><td>Loloi <span style="color:var(--faint)">B0CRXRBVF5</span></td><td class="num">80,320</td><td class="num">93.2%</td><td class="num">5,910</td><td class="num">6.8%</td><td>SP 中等投入</td></tr>
+      <tr><td>ANSSO <span style="color:var(--faint)">B0H3VMHHKV</span></td><td class="num">58,726</td><td class="num">87.7%</td><td class="num">8,259</td><td class="num">12.3%</td><td>新锐靠广告冲榜，与 wool rug TOP1 呼应</td></tr>
+      <tr><td>Rugs USA <span style="color:var(--faint)">B0DVLSB8RG</span></td><td class="num">31,327</td><td class="num">63.8%</td><td class="num">17,756</td><td class="num">36.2%</td><td>广告依赖度高，主因 SB  heavy</td></tr>
+      <tr style="background:#fdf3e3"><td><b>SEVONNE（本品牌）<span class="brand-tag me">B0HNK3TKWR</span></b></td><td class="num"><b>2</b></td><td class="num"><b>0.2%</b></td><td class="num"><b>867</b></td><td class="num"><b>99.8%</b></td><td><b class="down">几乎零自然流量，全靠 SP 硬推</b></td></tr>
+    </table>
+  </div>
+
+  <!-- 模块4 广告投放拆解 -->
+  <div class="card">
+    <h2>模块 4｜广告投放拆解：SP 精度 · 主攻词 · SB 形态</h2>
+    <div class="d">西柚父体近 7 天（11/12–11/18）· 已移除与模块3重复的品牌流量占比图，改为活动级下钻</div>
+    <div class="wdesc" style="margin-bottom:12px">
+      <b>词层级定义</b>：<b>头部词</b>＝该活动流量贡献最高、搜索量最大的核心大词（如 wool rug / living room rug，竞争最激烈、CPC 最高）；<b>尾部词（中尾词）</b>＝搜索量中等、竞争相对可控的补量词（如 wool rugs 8x10 / checkered rug）；<b>长尾词</b>＝搜索量低但购买意图明确、转化更精准的细分词（如 melrose checked rug / safavieh area rugs 9x12）。下方「头/中/长」占比＝各层级词在该活动内的流量贡献占比。
+    </div>
+
+    <div class="grid" style="grid-template-columns:1.15fr 1fr;gap:14px">
+      <div>
+        <div class="wdesc"><b>① 活动投放精度：词层级流量结构</b>（头部/中尾/长尾）</div>
+        <div id="b4tier" class="chart" style="height:250px"></div>
+      </div>
+      <div style="overflow:auto">
+        <div class="wdesc"><b>② 活动明细与打法判定</b></div>
+        <table class="mini-table">
+          <tr><th>品牌 · 活动</th><th>类型</th><th class="num">词数</th><th class="num">流量</th><th class="num">头/中/长</th><th>判定</th></tr>
+          <tr><td>ANSSO · CU6R（羊毛词）</td><td>SP</td><td class="num">17</td><td class="num">2,778</td><td class="num">0/44/56</td><td>长尾精准羊毛词</td></tr>
+          <tr><td>ANSSO · N9QU（类目词）</td><td>SP</td><td class="num">9</td><td class="num">1,080</td><td class="num">91/9/0</td><td>头部大词强攻</td></tr>
+          <tr><td>Rugs USA · X5C8</td><td>SP</td><td class="num">13</td><td class="num">900</td><td class="num">0/86/14</td><td>中尾词补位</td></tr>
+          <tr><td>Rugs USA · K8NQ</td><td>SB</td><td class="num">224</td><td class="num">16,659</td><td class="num">21/17/62</td><td>商品集长尾覆盖</td></tr>
+          <tr style="background:#fdf3e3"><td><b>SEVONNE · 6NY9 / 8GS1</b></td><td>SP</td><td class="num"><b>10</b></td><td class="num"><b>867</b></td><td class="num">—</td><td><b>单一尺寸词，词量过少</b></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="wdesc" style="margin-top:14px"><b>③ 估算花费 TOP 词</b>（广告流量 × CPC，仅用于排序，非真实消耗）</div>
+    <div style="overflow:auto;max-height:250px">
+      <table class="mini-table">
+        <tr><th>品牌</th><th>关键词（点击搜索）</th><th class="num">广告流量</th><th class="num">CPC</th><th class="num">估算花费</th><th>类型</th></tr>
+        <tr><td>Rugs USA</td><td><a href="https://www.amazon.com/s?k=living+room+rug" target="_blank" style="color:var(--blue2);text-decoration:none">living room rug ↗</a></td><td class="num">3,544</td><td class="num">$1.29</td><td class="num"><b>$4,572</b></td><td>SB 商品集</td></tr>
+        <tr><td>ANSSO</td><td><a href="https://www.amazon.com/s?k=wool+rug" target="_blank" style="color:var(--blue2);text-decoration:none">wool rug ↗</a></td><td class="num">1,887</td><td class="num">$1.97</td><td class="num"><b>$3,717</b></td><td>SP</td></tr>
+        <tr><td>ANSSO</td><td><a href="https://www.amazon.com/s?k=wool+rugs+8x10" target="_blank" style="color:var(--blue2);text-decoration:none">wool rugs 8x10 ↗</a></td><td class="num">1,325</td><td class="num">$1.71</td><td class="num"><b>$2,266</b></td><td>SP</td></tr>
+        <tr><td>Rugs USA</td><td><a href="https://www.amazon.com/s?k=checkered+rug" target="_blank" style="color:var(--blue2);text-decoration:none">checkered rug ↗</a></td><td class="num">1,291</td><td class="num">$1.16</td><td class="num">$1,498</td><td>SB+SP</td></tr>
+        <tr><td>Rugs USA</td><td><a href="https://www.amazon.com/s?k=wool+rugs+8x10" target="_blank" style="color:var(--blue2);text-decoration:none">wool rugs 8x10 ↗</a></td><td class="num">612</td><td class="num">$1.71</td><td class="num">$1,047</td><td>SB 商品集</td></tr>
+        <tr><td>Rugs USA</td><td><a href="https://www.amazon.com/s?k=melrose+checked+rug" target="_blank" style="color:var(--blue2);text-decoration:none">melrose checked rug ↗</a></td><td class="num">874</td><td class="num">$1.01</td><td class="num">$883</td><td>SB 商品集</td></tr>
+        <tr><td>ANSSO</td><td><a href="https://www.amazon.com/s?k=wool+rugs" target="_blank" style="color:var(--blue2);text-decoration:none">wool rugs ↗</a></td><td class="num">457</td><td class="num">$1.85</td><td class="num">$845</td><td>SP</td></tr>
+        <tr style="background:#fdf3e3"><td><b>SEVONNE</b></td><td><a href="https://www.amazon.com/s?k=wool+rug" target="_blank" style="color:var(--blue2);text-decoration:none">wool rug ↗</a></td><td class="num">324</td><td class="num">$1.97</td><td class="num">$638</td><td>SP</td></tr>
+        <tr><td>Rugs USA</td><td><a href="https://www.amazon.com/s?k=safavieh+area+rugs+9x12" target="_blank" style="color:var(--blue2);text-decoration:none">safavieh area rugs 9x12 ↗</a></td><td class="num">476</td><td class="num">$1.23</td><td class="num">$585</td><td>SB 竞品截流</td></tr>
+        <tr><td>ANSSO</td><td><a href="https://www.amazon.com/s?k=living+room+rug" target="_blank" style="color:var(--blue2);text-decoration:none">living room rug ↗</a></td><td class="num">446</td><td class="num">$1.29</td><td class="num">$575</td><td>SP</td></tr>
+      </table>
+    </div>
+
+    <div class="wdesc" style="margin-top:14px"><b>④ SB 形态判定：SBV 还是商品集？</b></div>
+    <div class="plist">
+      <div class="p"><span class="idx">A</span><span><b>Rugs USA ＝ SB 商品集（Product Collection），不是 SBV</b>。活动 <b>K8NQ</b> 类型为 <code>sb</code>（非 <code>sbv</code>），展示位中 <b>SBV 流量为 0、SB 流量 100%</b>；覆盖 <b>224 词</b>，其中 <b>9 个变体各分得约 1,950 流量（11.7% 均分）</b>——这是商品集多图轮播的典型特征。主投 living room rug / checkered rug / safavieh 竞品词。</span></div>
+      <div class="p"><span class="idx">B</span><span><b>其余 5 品牌近 7 天均无 SB / SBV 活动</b>：ANSSO、SEVONNE、SAFAVIEH、Scandilivin、Loloi 全部为纯 SP。Rugs USA 是样本中<b>唯一用 SB 抢占类目大词</b>的品牌，广告流量 36.2% 中有 33.9% 来自 SB。</span></div>
+    </div>
+
+    <div class="wdesc" style="margin-top:12px"><b>⑤ 主攻关键词与方向（按广告流量）：</b></div>
+    <div class="plist">
+      <div class="p"><span class="idx">A</span><span><b>ANSSO</b>（91 词）：<b>双活动分层</b>——羊毛词活动 CU6R（17 词）主攻 wool rug（1,887，占 22.8%）+ wool rugs 8x10（1,325，占 16.0%），<b>56% 流量来自长尾词</b>；类目词活动 N9QU（9 词）<b>91% 流量压在头部大词</b>（living room rug / rugs / rug）。方向＝<b>精准羊毛长尾 + 类目头部大词</b>，与其 wool rug 点击 TOP1 地位相互强化。</span></div>
+      <div class="p"><span class="idx">B</span><span><b>Rugs USA</b>（234 词）：SB 商品集 heavy 打 <b>living room rug</b>（3,544）+ <b>checkered rug</b>（1,291），并投 <b>safavieh area rugs 8x10/9x12</b>（合计 854）竞品词截流；SP 仅 13 词做中尾补位。方向＝<b>类目大词 + 图案词 + 竞品品牌词</b>，商品集长尾覆盖 62%。</span></div>
+      <div class="p"><span class="idx">C</span><span><b>SEVONNE</b>（仅 10 词）：只投 <b>wool rug</b>（324，占 37.4%）+ <b>wool rugs 9x12</b>（232，占 26.8%）+ wool rugs（173）。3 个 SP 活动、无 SB、无类目词、无竞品词。方向已聚焦羊毛词，但<b>词量仅为 ANSSO 的 1/9、Rugs USA 的 1/23</b>，建议大幅扩词并补 SB。</span></div>
+      <div class="p"><span class="idx">D</span><span><b>SAFAVIEH / Scandilivin / Loloi</b>：SP 占比均 &lt;7%，以自然流量为主，广告仅做防守与长尾补位。</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- 板块4 DTC 官网动态 -->
+<div class="panel" id="p3">
+  <div class="card" style="margin-bottom:14px">
+    <h2>DTC 官网黑五网一（BFCM）监控 · 总结</h2>
+    <div class="d">数据来源：DTC记录.xlsx（Week47）· 6 个品牌官网前台截图人工录入 · 点击任意截图可放大查看</div>
+    <div class="plist" style="margin-top:10px">
+      <div class="p"><span class="idx">1</span><span><b>整体格局：4 家做 BFCM、2 家按兵不动</b>。Ruggable / RUG USA / Safavieh / TUMBLE 均上线 BFCM Banner 与折扣；<b>Loloi、joon Loloi 官网三处均无变化，仅 joon Loloi 有清仓活动、明确不参加 BFCM</b>。</span></div>
+      <div class="p"><span class="idx">2</span><span><b>羊毛折扣力度排序（越靠前越狠）</b>：RUG USA 最低 <b>5 折</b>（区间 5~8.9 折）＞ Ruggable <b>6~7 折</b> ＞ Safavieh <b>6.6~9 折</b>（非全产品参加）。TUMBLE 仅售可水洗地毯、不涉羊毛；Loloi 系无 BFCM。</span></div>
+      <div class="p"><span class="idx">3</span><span><b>打法差异</b>：RUG USA 用「买一送一 / 50% off」+ 独立 BFCM 集合页最激进；Ruggable 全站最高 40% + 每个下拉栏都挂优惠提醒；Safavieh 开屏「满 250 减 50」+ Banner「最多 50%」并设黑五集合页；TUMBLE 走节日氛围 + 45% 优惠，落地页主推圣诞。</span></div>
+      <div class="p"><span class="idx">4</span><span><b>对我方（SEVONNE）启示</b>：竞品 DTC 官网 BFCM 普遍 6~7 折起、且集合页 + 开屏双层曝光；SEVONNE 本周既无 Deal 也无 BFCM 承接页。羊毛细分若要在 BFCM 抢量，参考 RUG USA 的「集合页 + 买赠」与 Ruggable 的「品类页专区」打法，比单纯降价更有效。</span></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <h2>各品牌官网变化明细（Week47）</h2>
+    <table>
+      <tr><th>品牌</th><th>官网进入页</th><th>官网主页变化</th><th>rug 页</th><th>活动情况 / 折扣</th></tr>
+      <tr><td><b>joon Loloi</b></td><td>没有变化</td><td>没有变化</td><td>清仓产品陈列（见截图）</td><td>只有清仓活动，<b class="down">BFCM 没有</b></td></tr>
+      <tr><td><b>Loloi</b></td><td>没有变化</td><td>没有变化</td><td>没有变化</td><td>无活动</td></tr>
+      <tr><td><b>Safavieh</b></td><td>开屏满 $250 减 $50 + Banner「最多 50% 优惠」（见截图）</td><td>开屏券 + 50% Banner</td><td>黑五产品集合页</td><td>非全部产品参加，折扣 6.6~9 折不等</td></tr>
+      <tr><td><b>Ruggable</b></td><td>全站最高 40% + 下拉栏 40% 提醒 + 圣诞推荐（见多张截图）</td><td>每个下拉栏都有 40% 优惠提醒；按尺寸功能做 BF 推荐（主圣诞）</td><td>几乎都有折扣</td><td>羊毛最低 6 折、最高 7 折</td></tr>
+      <tr><td><b>RUG USA</b></td><td>Banner「买一送一，50% 优惠」+ 单独系列优惠集合（见截图）</td><td>Banner 买一送一 50%</td><td>有 BFCM banner</td><td>羊毛最低 5 折、最高 8.9 折，中间 6 折/7.7 折均有</td></tr>
+      <tr><td><b>TUMBLE</b></td><td>Banner「节日氛围 + 45% 优惠」+ 下拉框同步 + 每页不同折扣（见截图）</td><td>节日氛围 + 45% 优惠</td><td>几乎都有折扣，只卖可水洗地毯</td><td>45% 优惠为主，不涉羊毛</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>官网截图留档（16 张 · 点击放大）</h2>
+    <div class="d">按品牌分组 · 顺序与原始记录一致 · 缩略图仅显示顶部，点击查看完整长图</div>
+    <div id="dtcGallery"></div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="closeLb(event)">
+  <span class="lb-close" onclick="closeLb(event)">×</span>
+  <img id="lbImg" src="" alt="">
+  <div class="lb-cap" id="lbCap"></div>
+  <div class="lb-hint">点击任意处或按 × 关闭</div>
+</div>
+
+<!-- 板块5 -->
+<div class="panel" id="p4">
+  <div class="adv">
+    <h2>对我们（SEVONNE）的启示</h2>
+    <ol>
+      <li><b>【P0·紧急】BFCM 仅剩约 10 天</b>：竞品羊毛款全线 -15%~-30% Deal（且多为先涨后折），Sevonne 建议至少对 8x10 主力款上 Deal/Coupon + SP 广告承接 wool rug 流量。</li>
+      <li><b>【P0】抢「wool rug」核心词</b>：10月月搜 4.85万（购买率 2.86%，类目均值 9 倍）；近7天周搜 6,514、ABA 排名 #31,101。最新周榜 TOP1 点击已切换为 ANSSO（B0H3VNCFKT，6.9%），SAFAVIEH / SEVONNE 均未进榜。</li>
+      <li><b>【P0】打「100% 新西兰羊毛」差异化</b>：竞品 TOP 点击多为 80% 混纺，标题/主图前置强化 100% NZ Wool。</li>
+      <li><b>【P1】小尺寸 $99 卡位空档</b>：到货后先卡 $99~150 段起量，避开 $150~350 绞肉机；在售 $540+ 段强化手工感。</li>
+      <li><b>【P1·重要】自然基本盘几乎为零，警惕「广告依赖症」</b>：西柚近 7 天显示 SEVONNE 该父体 <b>99.8% 流量来自 SP、自然流量仅 2 次</b>，而 SAFAVIEH/Scandilivin 自然占比 97%+。当前 10 个广告词、3 个 SP 活动、零 SB；竞品 ANSSO 已用 12.3% 广告占比冲上 wool rug 点击 TOP1，Rugs USA 用 SB 截流类目大词。建议：<b>广告端大幅拓词（参考羊毛词库 93 词）+ 补 SB 打 living room rug 等类目大词，同时用 Deal 与评论撬动自然流量</b>，否则停广告即断流。</li>
+    </ol>
+  </div>
+</div>
+
+<div class="foot">数据源：西柚 MCP（ABA 周搜索量 / 父体广告结构）· 卖家精灵（10月归档，手动会话补齐）· 前台截图人工录入 · ABA 周期 2026/11/08–11/14 · 广告周期 2026/11/12–11/18 · 更新 2026-11-20 · 羊毛口径：Material 或标题含 Wool，排除 Faux Wool</div>
+</div>
+
+<script>
+const charts=[];
+function mk(id,opt){const el=document.getElementById(id);if(!el)return null;const c=echarts.init(el);c.setOption(base(opt));charts.push(c);return c;}
+function sw(i){document.querySelectorAll('.tab').forEach((t,x)=>t.classList.toggle('active',x===i));document.querySelectorAll('.panel').forEach((p,x)=>p.classList.toggle('active',x===i));setTimeout(()=>charts.forEach(c=>c.resize()),60);}
+const C={text:'#5f6b76',axis:'#d5d9de',split:'#eceef1'};
+function base(o){return Object.assign({backgroundColor:'transparent',textStyle:{color:'#1f2933'}},o)}
+
+/* 板块1 */
+/* 10月归档：卖家精灵手动会话取数（dataMonth=202610）；Loloi / AH ALLEN / Dash & Albert 该月归档缺失，用11月预测占位，浅蓝标记 */
+const octEst={'AH ALLEN':1,'Dash & Albert':1};
+const octData=[['SAFAVIEH',3841],['Loloi',1190],['Scandilivin',792],['Rugs USA',616],['RUGWYN',197],['AH ALLEN',44],['SEVONNE',0],['Dash & Albert',8]];
+mk('b1',{grid:{left:60,right:20,top:24,bottom:60},
+  tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>{const b=p[0].name;return '<b>'+b+'</b><br/>销量 '+p[0].value+' 件<br/><span style="color:'+(octEst[b]?'#d97706':'#16a34a')+'">'+(octEst[b]?'10月归档缺失，此为11月预测占位':'10月归档准确值')+'</span>'}},
+  xAxis:{type:'category',data:octData.map(b=>b[0]),axisLabel:{color:C.text,rotate:30,fontSize:10.5},axisLine:{lineStyle:{color:C.axis}}},
+  yAxis:{type:'value',axisLabel:{color:C.text},splitLine:{lineStyle:{color:C.split}}},
+  series:[{type:'bar',data:octData.map(b=>({value:b[1],itemStyle:{color:b[0].includes('SEVONNE')?'#d97706':(octEst[b[0]]?'#9fb3c8':(b[1]>0?'#1f3a5f':'#c9cdd3'))}})),barWidth:'55%',borderRadius:[4,4,0,0],label:{show:true,position:'top',color:'#1f2933',fontSize:11}}]});
+const novData=[['SAFAVIEH',6901],['Loloi',1122],['Scandilivin',665],['Rugs USA',619],['RUGWYN',78],['AH ALLEN',44],['Dash & Albert',8],['SEVONNE',0]];
+mk('b1b',{grid:{left:60,right:20,top:24,bottom:60},
+  xAxis:{type:'category',data:novData.map(b=>b[0]),axisLabel:{color:C.text,rotate:30,fontSize:10.5},axisLine:{lineStyle:{color:C.axis}}},
+  yAxis:{type:'value',axisLabel:{color:C.text},splitLine:{lineStyle:{color:C.split}}},
+  series:[{type:'bar',data:novData.map(b=>({value:b[1],itemStyle:{color:b[0].includes('SEVONNE')?'#d97706':'#3d6a9e'}})),barWidth:'55%',borderRadius:[4,4,0,0],label:{show:true,position:'top',color:'#1f2933',fontSize:11}}]});
+
+/* 板块2 汇总 */
+mk('b2a',{tooltip:{trigger:'item'},legend:{bottom:0,textStyle:{color:C.text},itemWidth:12},
+  series:[{type:'pie',radius:['40%','66%'],center:['50%','44%'],
+    label:{color:'#1f2933',fontSize:10.5,formatter:'{b}\n{d}%'},
+    data:[{name:'SAFAVIEH',value:6901},{name:'Loloi',value:1122},{name:'Scandilivin',value:665},{name:'Rugs USA',value:619},{name:'其他',value:148},{name:'SEVONNE',value:0}],
+    itemStyle:{borderColor:'#fff',borderWidth:2},color:['#1f3a5f','#3d6a9e','#d97706','#6b8cb8','#b8c4d0','#e6a23c']}]});
+mk('b2b',{grid:{left:64,right:16,top:30,bottom:34},
+  xAxis:{type:'category',data:['$99~150','$150~350','$350~500','$500~700','>$700'],axisLabel:{color:C.text,fontSize:11},axisLine:{lineStyle:{color:C.axis}}},
+  yAxis:{type:'value',name:'款数',nameLocation:'end',nameGap:12,nameTextStyle:{color:'#1f2933',fontSize:12,fontWeight:600,align:'left'},min:0,max:10,interval:2,axisLabel:{color:C.text,fontSize:11},splitLine:{lineStyle:{color:C.split}}},
+  series:[{type:'bar',data:[3,9,4,3,4],barWidth:'52%',itemStyle:{color:'#1f3a5f'},borderRadius:[4,4,0,0],
+    label:{show:true,position:'top',color:'#1f2933',fontSize:11}}]});
+
+/* 板块2 大表 */
+const IMG=p=>`https://m.media-amazon.com/images/I/${p}._AC_US200_.jpg`;
+const brandsTbl=[
+ {brand:'SEVONNE',me:true,items:[['100% New Zealand Wool 8x10 / 9x12',645.99,'0(周销)','188万+',14,'B0HNK3TKWR','']]},
+ {brand:'SAFAVIEH',me:false,items:[
+   ['Natura Wool 系列(4款)',419.99,3091,'4.3万',184,'B0BWLCB9V9',''],
+   ['Abstract Wool 系列(3款)',327.53,1668,'9.2万',256,'B0DP7PHZLK','51hGTD0EmcL'],
+   ['Capri Wool 系列(3款)',272.39,818,'15万',105,'B0C6YQH182','510mtDSWNiL'],
+   ['Blossom Wool',381.99,420,'11.7万',127,'B0C6YNL42F',''],
+   ['Heritage Wool',594.18,319,'8.9万',190,'B0DP759XSL','61OSOdKjgmS'],
+   ['Metro Wool',469.99,317,'11.1万',117,'B0DP6LG95B','21hHlOgGpqL'],
+   ['Dip Dye Wool',309.55,268,'13万',54,'B0BLLBLM7R','51xzbnZBSWL'],
+   ['Natura Runner Wool',72.99,1061,'3.2万',184,'B0CT4J479Y','51KW4T5Do0L'],
+   ['Abstract Diamond Wool',310.99,378,'11.1万',110,'B0DP7V2XZ5','51rTRsgt2pS']]},
+ {brand:'Loloi',me:false,items:[
+   ['Chris Loves Julia Polly (Wool Blend)',319.30,1005,'3.9万',103,'B0CRXRBVF5','51J7AEVV0lL'],
+   ['Magnolia Home Rae (Wool)',473.66,117,'40.9万',39,'B0CXQCB5X2','91hUDmbhuEL']]},
+ {brand:'Scandilivin Homes',me:false,items:[['100% Wool Popcorn Rug 8x10',339.99,665,'6.8万',14,'B0DHPLB82Q','71GfVJfIStL']]},
+ {brand:'Rugs USA',me:false,items:[
+   ['Melrose Checked Wool',329.99,292,'10.9万',87,'B0DVLSB8RG','51v6P0uErgL'],
+   ['Speckled Verdant Wool 8x10',347.47,214,'25.5万',92,'B0DNG4FKKY','41J9mwlFddL'],
+   ['Montceito Tufted Wool 6x9',255.06,27,'117.5万',19,'B0DJC1Q3C4','91d5rto3vLL'],
+   ['Nate Berkus Hollis Wool 5x8',321.00,22,'109.6万',20,'B0FVFG26YQ','91W-nWx3DPL'],
+   ['Petra Flatweave Wool 6x9',598.54,21,'113.6万',39,'B0DNG59MLP','91azJm2981L'],
+   ['Juju Flatweave Wool 9x12',709.00,43,'45.3万',35,'B0DJ183TKH','']]},
+ {brand:'RUGWYN',me:false,items:[['Hand Tufted Oushak Wool 10x14',1249.00,78,'31万',24,'B0GGBSP4ZS','A1FdXaxpxqL'],['Hand-Tufted Scalloped Wool',98,'—','—',32,'B0HDQ6DG4F','919wB3sGf6L']]},
+ {brand:'AH ALLEN HOME',me:false,items:[['Oushak 100% Wool 10x14',1399.00,44,'4.4万',33,'B0F84JPYFH','A1KH2+3Ut6L']]},
+ {brand:'Dash & Albert',me:false,items:[['Twiggy Handwoven Wool',1898.00,8,'301万',9,'B0CSM8HB44','512HlkPWqbL']]},
+ {brand:'nuLOOM',me:false,items:[['Ago Flatweave Wool（父体复核中）',229.99,'—','—',31,'B07H9T459D','91i3MbpZ6cL']]},
+ {brand:'ANSSO',me:false,items:[['80% Merino Wool Tufted 8x10（Deal -21%）',284.99,'100+/月','12.8万',12,'B0H3VMHHKV','914BIsHYiEL']]},
+ {brand:'TTC',me:false,items:[['Hand-Tufted Irregular Wool（父体复核中）',26,'—','—',154,'B0GJCH2XL8','51r8ORRSRSL']]}
+];
+let th='<tr><th>主图</th><th>品牌 / 父ASIN 产品</th><th class="num">价格$</th><th class="num">月销</th><th class="num">BSR</th><th class="num">变体</th><th>父ASIN</th></tr>';
+brandsTbl.forEach((b,bi)=>{
+  th+=`<tr class="brand-row" onclick="tg(${bi})"><td></td><td>${b.brand}${b.me?'<span class="tag w">本品牌</span>':''}</td><td colspan="5" class="num" style="color:var(--muted)">${b.items.length} 个父ASIN</td></tr>`;
+  b.items.forEach((it,ii)=>{
+    const img=it[6]?`<img class="thumb" src="${IMG(it[6])}" loading="lazy">`:'<div class="thumb"></div>';
+    th+=`<tr class="child" id="c${bi}_${ii}"><td>${img}</td><td>${it[0]}</td><td class="num">$${it[1]}</td><td class="num">${it[2]}</td><td class="num">${it[3]}</td><td class="num">${it[4]}</td><td style="color:var(--blue2)">${it[5]}</td></tr>`;
+  });
+});
+document.getElementById('tbl').innerHTML=th;
+function tg(bi){const r=document.querySelectorAll('.brand-row')[bi];r.classList.toggle('open');document.querySelectorAll(`[id^="c${bi}_"]`).forEach(c=>c.classList.toggle('show',r.classList.contains('open')));}
+
+/* ===== 板块3 广告&ABA 四大模块 ===== */
+/* 词库数据（西柚 ABA 近7天周搜索量 2026/11/08-11/14） */
+const wool_material=[["wool rug",6514,31101],["wool rugs",2149,95905],["wool area rug",1278,148881],["wool area rugs",642,289196],["hand tufted wool rug",354,513747],["wool rug runner",206,859631],["100% wool rug",187,938403],["tufted wool rug",129,1312205],["chunky wool rug",103,1592559],["plaid wool rug",81,1912705],["hand knotted wool rugs",79,1961885],["faux wool rug",63,2313025],["thick wool rug",60,2383768],["modern wool rugs",57,2458235],["hand tufted wool rugs",55,2537062],["washable wool rug",49,2710449],["jute wool rug",49,2710449]];
+const wool_size=[["wool rugs 8x10",3007,76886],["wool rugs 9x12",1620,118702],["wool area rugs 8x10",844,222025],["8x10 wool rug",617,300504],["wool area rugs 9x12",537,343879],["9x12 wool rug",444,412876],["wool rugs 6x9",431,425065],["wool rug 8x10",420,435602],["8x10 wool area rugs",372,489128],["9x12 wool rugs for living room",354,513747],["wool rug 9x12",264,679955],["wool rug 10x14",240,743504],["wool rug 5x7",221,802003],["hand tufted wool rug 8x10",211,839639],["hand knotted wool rugs 8x10",184,950614],["5x7 wool rug",171,1018088],["safavieh wool rugs 9x12",163,1062992],["safavieh wool area rugs 8x10",158,1095346],["3x5 wool rug",145,1185028],["wool rugs 10x14",142,1204476],["9x12 wool rugs",126,1336078],["6x9 wool rug",124,1360570],["10x14 wool rug",124,1360570],["wool area rugs 8x10 clearance",124,1360570],["6x9 wool area rugs",121,1385968],["wool rug 6x9",116,1440180],["10x14 wool area rugs",113,1468351],["4x6 wool rug",110,1497790],["8 x 10 wool rug",105,1559753],["wool area rug 6x9",103,1592559],["9 x 12 wool rug",100,1627028],["hand knotted wool rugs 9x12",95,1700381],["2x3 wool rug",95,1700381],["9x12 wool area rugs",92,1739298],["wool rugs 8x10 clearance prime",84,1866395],["8x10 wool rugs",84,1866395],["9 x 12 wool rugs for living room",79,1961885],["wool area rugs 5x7",76,2013281],["wool rug 3x5",73,2067147],["10x14 wool rugs for living room",71,2123962],["10x10 wool rug",63,2313025],["wool rugs 5x7",63,2313025],["5 x 7 wool rug",63,2313025],["9x12 wool area rug",63,2313025],["10x12 wool rug",60,2383768],["12x15 wool rug",55,2537062],["hand tufted wool rug 10x14",52,2621057],["hand tufted wool rug 6x9",46,2805579],["10x12 wool area rugs for living room",46,2805579]];
+const wool_scene=[["wool rugs for living room",686,271101],["wool rug cleaner",298,604847],["round wool rug",211,839639],["wool area rug living room",176,989956],["small wool rug",79,1961885],["large wool rug",79,1961885],["wool area rugs for living room",63,2313025],["round wool rugs",43,2907343]];
+const wool_color=[["white tufted wool rug",452,405669],["green wool rug",206,859631],["blue wool rug",187,938403],["brown wool rug",184,950614],["pink wool area rug",113,1468351],["pink wool rug",95,1700381],["green wool area rug",84,1866395],["burgundy wool rug",76,2013281],["ivory wool rug",65,2246565],["cream wool rug",63,2313025],["red wool rug",52,2621057]];
+const wool_brand=[["safavieh wool rug",243,735749],["safavieh wool rugs",243,735749],["brooks brothers wool area rugs",108,1528214],["loloi wool rug",79,1961885],["safavieh wool area rugs",71,2123962],["rugoria hand tufted wool area rug",55,2537062],["capitola hand-tufted wool rug",49,2710449],["loloi wool area rugs",43,2907343]];
+const cat_core=[["rug",138425,412],["area rug",95047,1278],["rugs",92548,1329],["runner rug",40633,3023],["area rugs",20446,6640],["hallway runner rug",16830,8430],["runner rug non slip",16347,8743],["jute rug",10887,14917],["kitchen runner rug",10870,14949],["runner rugs",8253,22064],["boho rug",8118,22597],["small rug",7693,24430],["large area rug",6978,28155],["animal print rug",5944,35452],["cool rugs",5135,43343],["large rug",5060,44193],["persian rug",4959,45371],["shag rug",4858,46603],["tiger rug",4815,47129],["plaid rug",4760,47818],["vintage rug",4746,48003],["car rug",4408,52553],["scalloped rug",4340,53539]];
+const cat_size=[["8x10 area rugs",65598,1879],["area rugs 8x10",30596,4149],["9x12 area rug",23985,5493],["area rugs 9x12 living room",20138,6763],["5x7 area rugs",18638,7430],["6x9 area rugs",13329,11364],["rugs 8x10",12174,12817],["area rugs 5x7",11918,13188],["8x10 area rugs for living room",11690,13537],["5x7 rug",10213,16298],["8x10 rug",10208,16308],["9x12 rugs for living room",8484,21202],["10x14 area rugs",8407,21483],["4x6 area rug",8123,22575],["3x5 rug",7009,27973],["8 x 10 area rugs for living room",6658,30134],["10x12 area rug",6008,34924],["rug 8x10",5518,39327],["4x6 rug",5118,43540],["6x9 rug",5101,43729],["9x12 rug",4987,45050],["6x8 area rug",4918,45869],["area rug 6x9",4836,46864],["rugs 5x7",4781,47554],["5x8 area rug",4760,47818],["8x10 area rug",4736,48134],["living room rugs 8x10",4622,49613],["8x8 area rug",4612,49743],["7x9 area rug",4434,52191],["jute rug 8x10",4418,52419],["8x10 rugs for living room",4406,52592],["9 x 12 area rugs for living room",4243,54972]];
+const cat_scene=[["rugs for living room",81180,1561],["living room rug",76525,1656],["kitchen rugs",49086,2460],["rugs for bedroom",30674,4137],["bedroom rug",26693,4850],["kitchen rug",17268,8164],["entryway rug",13603,11065],["living room rugs",7090,27510],["area rugs for living room",7070,27621],["kids rug",6595,30552],["playroom rug",6473,31386],["laundry room rug",6350,32268],["dining room rug",6050,34578],["bedroom rugs",5840,36346],["nursery rug",5605,38488],["rugs for entryway",5547,39045],["office rug",5142,43272],["kitchen rug set",4785,47513],["pink rugs for bedroom",4773,47656],["entry rug",4519,51006],["rug amazon",4519,51006],["entry way rugs indoor",4366,53161]];
+const cat_brand=[["safavieh area rugs",9543,17926],["loloi rugs",6860,28858],["safavieh rugs",4860,46576]];
+const cat_color=[["pink rug",18740,7381],["black rug",13434,11248],["green rug",10684,15308],["brown rug",8991,19509],["white rug",7454,25574],["beige rug",7209,26853],["red rug",6475,31376],["black and white rug",6362,32177],["burgundy rug",6342,32323],["blue rug",6311,32550],["purple rug",5170,42951],["cream rug",5121,43506],["green area rug",4596,49961]];
+const woolData={material:wool_material,size:wool_size,scene:wool_scene,color:wool_color,brand:wool_brand};
+const catData={core:cat_core,size:cat_size,scene:cat_scene,brand:cat_brand,color:cat_color};
+const woolLabel={material:'材质词',size:'尺寸词',scene:'场景词',color:'颜色词',brand:'品牌词'};
+const catLabel={core:'类目大词',size:'尺寸词',scene:'场景词',brand:'品牌词',color:'颜色词'};
+const woolDescText={
+  material:'<b>材质词</b>：wool rug（6,514）/ wool area rug（1,278）/ 100% wool rug 等纯材质表述，另含 wool rug runner 形态词。wool rug 为绝对主词，是必争入口。',
+  size:'<b>尺寸词</b>：wool rugs 8x10（3,007）与 9x12（1,620）为两大主力尺寸，与 SEVONNE 主力 8x10/9x12 完全吻合；小尺寸 5x7/6x9 到货后可承接。',
+  scene:'<b>场景词</b>：for living room（686）领跑，round / small / large 等形态词构成长尾，可用于 Listing 词库与广告拓词。',
+  color:'<b>颜色词</b>：白色（452）/ 绿（206）/ 蓝（187）/ 棕（184）领跑，粉/酒红/象牙/奶油/红等长尾色，适合主图与颜色变体命名。',
+  brand:'<b>品牌词</b>：safavieh wool rug（243）/ loloi wool rug（79）/ brooks brothers（108）等竞品品牌词，是 SB 截流与关联流量入口。'
+};
+const catDescText={
+  core:'<b>类目大词</b>：rug（138,425）/ area rug（95,047）/ rugs（92,548）三大词周搜近 10 万级，另含 runner rug（40,633）等形态大类词；竞争难度 100+，属类目必投但难咬的大盘。',
+  size:'<b>尺寸词</b>：8x10 area rugs（65,598）为最大尺寸词，9x12 / 5x7 / 6x9 次之；SEVONNE 8x10 已在售，可优先承接该词。',
+  scene:'<b>场景词</b>：living room / bedroom / kitchen / entryway 为主力场景，rugs for living room 周搜 81,180，是 wool 场景词（686）的百倍量级，流量外溢空间大。',
+  brand:'<b>品牌词</b>：safavieh area rugs（9,543）/ loloi rugs（6,860）——竞品品牌词是 SB 截流与关联流量入口。',
+  color:'<b>颜色词</b>：pink rug（18,740）/ black rug（13,434）/ green rug（10,684）领跑，颜色词搜索量远高于羊毛颜色词，是类目流量重要入口。'
+};
+const fmt=n=>n>=10000?(n/10000).toFixed(1)+'万':n.toLocaleString();
+const fmtRank=n=>{const v=Number(n);return (v>0&&isFinite(v))?v.toLocaleString():'—';};
+function amazonUrl(kw){return 'https://www.amazon.com/s?k='+encodeURIComponent(kw);}
+
+/* 词类切换：图表 + 明细表 + 说明 */
+let woolChart=null,catChart=null;
+function drawWordChart(el,arr,color){
+  const top=arr.slice(0,12);
+  const opt={grid:{left:150,right:64,top:10,bottom:24},
+    tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>p[0].name+'<br/>周搜索量 '+fmt(p[0].value)+'<br/>ABA 排名 #'+p[0].data[2].toLocaleString()},
+    xAxis:{type:'value',axisLabel:{color:C.text,fontSize:10,formatter:v=>v>=10000?(v/10000)+'万':v},splitLine:{lineStyle:{color:C.split}}},
+    yAxis:{type:'category',inverse:true,data:top.map(x=>x[0]),axisLabel:{color:'#1f2933',fontSize:10.5,width:140,overflow:'truncate'},axisLine:{lineStyle:{color:C.axis}}},
+    series:[{type:'bar',data:top.map(x=>({value:x[1],rank:x[2]})),barWidth:'56%',itemStyle:{color:color},borderRadius:[0,4,4,0],
+      label:{show:true,position:'right',color:'#1f2933',fontSize:10,formatter:p=>fmt(p.value)}}]};
+  if(!el){return echarts.init(document.getElementById(arguments[1]));}
+  return opt;
+}
+function renderWordPanel(kind,k){
+  const isW=kind==='wool';
+  const arr=isW?woolData[k]:catData[k];
+  const label=isW?woolLabel[k]:catLabel[k];
+  const chartId=isW?'b3':'b3c';
+  const tableId=isW?'woolTable':'catTable';
+  const descId=isW?'woolDesc':'catDesc';
+  const color=isW?'#d97706':'#1f3a5f';
+  document.getElementById(descId).innerHTML=(isW?woolDescText:catDescText)[k];
+  // 图表
+  const el=document.getElementById(chartId);
+  if(!el)return;
+  if(!el._c){el._c=echarts.init(el);charts.push(el._c);}
+  const top=arr.slice(0,12);
+  el._c.setOption(base({grid:{left:150,right:64,top:10,bottom:24},
+    tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>p[0].name+'<br/>周搜索量 '+fmt(p[0].value)+'<br/>ABA 排名 #'+fmtRank(p[0].data.rank)},
+    xAxis:{type:'value',axisLabel:{color:C.text,fontSize:10,formatter:v=>v>=10000?(v/10000)+'万':v},splitLine:{lineStyle:{color:C.split}}},
+    yAxis:{type:'category',inverse:true,data:top.map(x=>x[0]),axisLabel:{color:'#1f2933',fontSize:10.5,width:140,overflow:'truncate'},axisLine:{lineStyle:{color:C.axis}}},
+    series:[{type:'bar',data:top.map(x=>({value:x[1],rank:x[2]})),barWidth:'56%',itemStyle:{color:color},borderRadius:[0,4,4,0],
+      label:{show:true,position:'right',color:'#1f2933',fontSize:10,formatter:p=>fmt(p.value)}}]}),true);
+  // 明细表（全部词，点击跳亚马逊）
+  let html='<tr><th>关键词（点击搜索）</th><th class="num">周搜</th><th class="num">ABA#</th></tr>';
+  arr.forEach(x=>{html+=`<tr><td><a href="${amazonUrl(x[0])}" target="_blank" style="color:var(--blue2);text-decoration:none">${x[0]} ↗</a></td><td class="num">${fmt(x[1])}</td><td class="num" style="color:var(--faint)">${fmtRank(x[2])}</td></tr>`;});
+  document.getElementById(tableId).innerHTML=html;
+}
+function swWool(k){
+  document.querySelectorAll('#woolTabs .wtab').forEach(t=>t.classList.toggle('on',t.dataset.k===k));
+  document.querySelectorAll('#woolTabs .wtab').forEach(t=>t.classList.toggle('amber',t.dataset.k===k));
+  renderWordPanel('wool',k);
+}
+function swCat(k){
+  document.querySelectorAll('#catTabs .wtab').forEach(t=>t.classList.toggle('on',t.dataset.k===k));
+  renderWordPanel('cat',k);
+}
+renderWordPanel('wool','material');
+renderWordPanel('cat','core');
+
+/* 模块3 各品牌流量占比（自然 vs 广告）堆叠条 */
+const flowBrands=['SEVONNE','ANSSO','Rugs USA','Loloi','Scandilivin','SAFAVIEH'];
+const flowOrg=[0.2,87.7,63.8,93.2,97.6,98.8];
+const flowAd=[99.8,12.3,36.2,6.8,2.4,1.2];
+mk('b3flow',{grid:{left:96,right:30,top:16,bottom:30},
+  tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>p[0].name+'<br/>'+p.map(x=>x.marker+x.seriesName+' '+x.value+'%').join('<br/>')},
+  legend:{bottom:0,textStyle:{color:C.text},itemWidth:12},
+  xAxis:{type:'value',max:100,axisLabel:{color:C.text,formatter:'{value}%',fontSize:10},splitLine:{lineStyle:{color:C.split}}},
+  yAxis:{type:'category',data:flowBrands,axisLabel:{color:'#1f2933',fontSize:11.5},axisLine:{lineStyle:{color:C.axis}}},
+  series:[
+    {name:'自然流量',type:'bar',stack:'t',data:flowOrg,barWidth:'56%',itemStyle:{color:'#16a34a'},label:{show:true,position:'inside',color:'#fff',fontSize:10,formatter:p=>p.value+'%'}},
+    {name:'广告流量',type:'bar',stack:'t',data:flowAd,barWidth:'56%',itemStyle:{color:'#d97706'},label:{show:true,position:'inside',color:'#fff',fontSize:10,formatter:p=>p.value>5?p.value+'%':''}}
+  ]});
+
+/* 模块4 活动投放精度：词层级堆叠（西柚 keywordTiers）*/
+mk('b4tier',{grid:{left:138,right:22,top:12,bottom:34},
+  tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>p[0].name+'<br/>'+p.map(x=>x.marker+x.seriesName+' '+x.value+'%').join('<br/>')},
+  legend:{bottom:0,textStyle:{color:C.text,fontSize:10},itemWidth:11,itemGap:10},
+  xAxis:{type:'value',max:100,axisLabel:{color:C.text,formatter:'{value}%',fontSize:10},splitLine:{lineStyle:{color:C.split}}},
+  yAxis:{type:'category',inverse:true,data:['ANSSO·类目词 N9QU','ANSSO·羊毛词 CU6R','RugsUSA·SP X5C8','RugsUSA·SB商品集 K8NQ'],axisLabel:{color:'#1f2933',fontSize:10.5,width:132,overflow:'truncate'},axisLine:{lineStyle:{color:C.axis}}},
+  series:[
+    {name:'头部词',type:'bar',stack:'t',data:[90.8,0,0,21.3],barWidth:'58%',itemStyle:{color:'#1f3a5f'},label:{show:true,position:'inside',color:'#fff',fontSize:10,formatter:p=>p.value>8?p.value+'%':''}},
+    {name:'中尾词',type:'bar',stack:'t',data:[9.2,43.7,85.6,17.1],barWidth:'58%',itemStyle:{color:'#6b8cb8'},label:{show:true,position:'inside',color:'#fff',fontSize:10,formatter:p=>p.value>8?p.value+'%':''}},
+    {name:'长尾词',type:'bar',stack:'t',data:[0,56.3,14.4,61.6],barWidth:'58%',itemStyle:{color:'#d97706'},label:{show:true,position:'inside',color:'#fff',fontSize:10,formatter:p=>p.value>8?p.value+'%':''}}
+  ]});
+
+/* ===== 板块4 DTC 官网截图画廊 ===== */
+const dtcGroups=[
+  {brand:'joon Loloi',color:'#6b8cb8',shots:[['dtc_01.jpg','rug 页 · 清仓产品陈列']]},
+  {brand:'Safavieh',color:'#1f3a5f',shots:[['dtc_02.jpg','官网进入页 · 开屏满250减50'],['dtc_03.jpg','活动情况 · 折扣产品列表'],['dtc_04.jpg','官网主页 · BFCM 最多50% Banner']]},
+  {brand:'Ruggable',color:'#d97706',shots:[['dtc_05.jpg','官网进入页 · 全站最高40%'],['dtc_06.jpg','活动情况 · Easy Care Wool 羊毛专区'],['dtc_07.jpg','下拉栏 · 40% 优惠提醒'],['dtc_08.jpg','按尺寸功能的 BF 推荐'],['dtc_09.jpg','节日产品推荐 · 主圣诞']]},
+  {brand:'RUG USA',color:'#16a34a',shots:[['dtc_10.jpg','官网进入页 · 买一送一50%'],['dtc_11.jpg','活动情况 · BFCM 折扣陈列'],['dtc_12.jpg','单独系列的优惠产品集合'],['dtc_13.jpg','rug 页 · BFCM banner']]},
+  {brand:'TUMBLE',color:'#8b5cf6',shots:[['dtc_14.jpg','官网进入页 · 节日氛围+45%'],['dtc_15.jpg','下拉框 · 同步显示优惠'],['dtc_16.jpg','每页产品 · 不同折扣力度']]}
+];
+(function(){
+  let h='';
+  dtcGroups.forEach(g=>{
+    h+=`<div class="dtc-brand"><div class="bh"><span class="dot" style="background:${g.color}"></span>${g.brand} <span style="font-weight:400;color:var(--faint);font-size:11.5px">${g.shots.length} 张</span></div><div class="dtc-grid">`;
+    g.shots.forEach(s=>{h+=`<div class="dtc-shot" onclick="openLb('assets/dtc/${s[0]}','${g.brand} · ${s[1]}')"><img src="assets/dtc/${s[0]}" loading="lazy"><div class="cap">${s[1]}</div></div>`;});
+    h+='</div></div>';
+  });
+  document.getElementById('dtcGallery').innerHTML=h;
+})();
+function openLb(src,cap){document.getElementById('lbImg').src=src;document.getElementById('lbCap').textContent=cap;document.getElementById('lightbox').style.display='flex';}
+function closeLb(e){if(e&&e.target&&e.target.tagName==='IMG')return;document.getElementById('lightbox').style.display='none';}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('lightbox').style.display='none';});
+</script>
+</body>
+</html>
